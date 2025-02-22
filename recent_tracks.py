@@ -1,65 +1,76 @@
-"""
-This is a simple table builder to display your last 40 tracks
-you've listened to in Spotify using Spotipy.
----Spotipy: https://github.com/plamere/spotipy
-"""
-
 import creds
 import spotipy
 import spotipy.util as util
 from datetime import datetime
 from dateutil import tz
+from rich.console import Console
+from rich.table import Table
 
-token = util.prompt_for_user_token(
+def get_spotify_token():
+    """OAuth token for Spotify authentication."""
+    token = util.prompt_for_user_token(
         creds.username,
         'user-read-recently-played',
         creds.client_id,
         creds.client_secret,
         creds.redirect_uri
-)
+    )
+    if not token:
+        raise ValueError("Failed to get Spotify token. Please check your credentials.")
+    return token
 
-"""
-Build OAuth token for your Spotify app
-
-Parameters:
-    username = 'username'
-    scope = 'user-read-recently-played'
-    client_id='aaaaaaaaaaaaaaaa1234567890123456'
-    client_secret='aaaaaaaaaaaaaaaa1234567890123456'
-    redirect_uri='http://127.0.0.1:9999'
-"""
-
-spotify = spotipy.Spotify(auth=token)
-recent_tracks = spotify.current_user_recently_played(limit=40)
-
-print("Last 40 Tracks:")
-# Build table headers
-print("{:<29} {:<50} {:<40} {:<0}".format('Artist','Name','Album', 'Time'))
-a = 0
-for i in recent_tracks['items']:
-
+def convert_utc_to_local(utc_time_str):
+    """Convert UTC time to local"""
     from_zone = tz.tzutc()
     to_zone = tz.tzlocal()
 
-    # Spotify returns 'played_at' time in non-standard format
-    # parse out non-standard chars
-    played_at_time = recent_tracks['items'][a]['played_at'] # 2000-01-01T00:00:00.000Z
-    played_at_obj = str(played_at_time[0:10]) \
-    + " " + \
-    str(played_at_time[11:19]) # 2000-01-01 00:00:00 --BUT UTC!!
-
-    # Convert str to datetime obj in order to change tz | (2000-01-01 00:00:00+00:00)
+    # Parse the UTC time string to a datetime object
+    played_at_obj = f"{utc_time_str[:10]} {utc_time_str[11:19]}"  # Format to 'YYYY-MM-DD HH:MM:SS'
     time_obj = datetime.strptime(played_at_obj, '%Y-%m-%d %H:%M:%S').replace(tzinfo=from_zone)
 
-    # Convert datetime obj from UTC tz to user's local tz | (2000-01-01 00:00:00)
-    local_time = time_obj.astimezone(to_zone).strftime('%Y-%m-%d %H:%M:%S')
+    # Convert to local time and return the formatted string
+    return time_obj.astimezone(to_zone).strftime('%Y-%m-%d %H:%M:%S')
 
-    # Build table underneath headers
-    print(str(a + 1) + ".) " + \
-    "{:<25} {:<50} {:<40} {:<0}".format(\
-    recent_tracks['items'][a]['track']['artists'][0]['name'], \
-    recent_tracks['items'][a]['track']['name'], \
-    recent_tracks['items'][a]['track']['album']['name'], \
-    local_time))
+def print_recent_tracks(recent_tracks):
+    """Print the recent tracks in a rich table"""
+    table = Table(show_lines=True, title="Last 35 Spotify Tracks:")
+    table.add_column("Artist", justify="left", style="cyan")
+    table.add_column("Name", justify="left", style="magenta")
+    table.add_column("Album", justify="left", style="green")
+    table.add_column("Time", justify="left", style="yellow")
+    for item in recent_tracks['items']:
+        artist_name = item['track']['artists'][0]['name']
+        track_name = item['track']['name']
+        album_name = item['track']['album']['name']
+        played_at_time = item['played_at']
 
-    a += 1
+        # Convert played time from UTC to local time
+        local_time = convert_utc_to_local(played_at_time)
+
+        # Add row to the table
+        table.add_row(artist_name, track_name, album_name, local_time)
+
+    # Print the table to console
+    console = Console()
+    console.print(table)
+
+def main():
+    """Display recent tracks."""
+    try:
+        # Get the OAuth token
+        token = get_spotify_token()
+
+        # Initialize Spotify client
+        spotify = spotipy.Spotify(auth=token)
+
+        # Fetch recent tracks
+        recent_tracks = spotify.current_user_recently_played(limit=35)
+
+        # Print the tracks
+        print_recent_tracks(recent_tracks)
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+if __name__ == '__main__':
+    main()
