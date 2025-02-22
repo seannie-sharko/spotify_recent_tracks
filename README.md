@@ -25,3 +25,4 @@ pip install -r requirements.txt
 cd spotify_recent_tracks
 python spotify_recent_tracks.py
 ```
+![screenshot](/images/recent_spotify_tracks.jpg)
