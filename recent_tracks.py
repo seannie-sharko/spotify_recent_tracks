@@ -6,6 +6,7 @@ from dateutil import tz
 from rich.console import Console
 from rich.table import Table
 
+
 def get_spotify_token():
     """OAuth token for Spotify authentication."""
     token = util.prompt_for_user_token(
@@ -19,6 +20,7 @@ def get_spotify_token():
         raise ValueError("Failed to get Spotify token. Please check your credentials.")
     return token
 
+
 def convert_utc_to_local(utc_time_str):
     """Convert UTC time to local"""
     from_zone = tz.tzutc()
@@ -30,6 +32,7 @@ def convert_utc_to_local(utc_time_str):
 
     # Convert to local time and return the formatted string
     return time_obj.astimezone(to_zone).strftime('%Y-%m-%d %H:%M:%S')
+
 
 def print_recent_tracks(recent_tracks):
     """Print the recent tracks in a rich table"""
@@ -54,6 +57,7 @@ def print_recent_tracks(recent_tracks):
     console = Console()
     console.print(table)
 
+
 def main():
     """Display recent tracks."""
     try:
@@ -71,6 +75,7 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == '__main__':
     main()
